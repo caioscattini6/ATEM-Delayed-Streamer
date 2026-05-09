@@ -1,0 +1,66 @@
+{
+  "name": "atem-delayed-streamer",
+  "version": "1.0.0",
+  "description": "Production-grade Electron app for delayed streaming via USB capture",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac"
+  },
+  "keywords": [
+    "atem",
+    "streaming",
+    "ffmpeg",
+    "delayed-stream"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "check-disk-space": "^3.4.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "keytar": "^7.9.0",
+    "node-machine-id": "^1.1.12",
+    "obs-websocket-js": "^5.0.8"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.atem.delayedstreamer",
+    "productName": "ATEM Delayed Streamer",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "identity": null
+    },
+    "dmg": {
+      "title": "ATEM Delayed Streamer"
+    },
+    "extraResources": [
+      {
+        "from": "bin/ffmpeg",
+        "to": "bin/ffmpeg"
+      }
+    ],
+    "files": [
+      "**/*",
+      "!dist/*",
+      "!bin/ffmpeg.zip",
+      "!bin/ffmpeg_tmp",
+      "!generate_key.js",
+      "!ACTIVATION_GUIDE.md",
+      "!FEATURES.md",
+      "!Project Outine.md"
+    ],
+    "asar": true
+  }
+}

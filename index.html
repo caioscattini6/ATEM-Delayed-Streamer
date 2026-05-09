@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATEM Delayed Streamer</title>
+    <style>
+        :root {
+            --bg-deep: #0f172a;
+            --bg-card: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .dot.active { background: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .dot.error { background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); }
+        .dot.warning { background: var(--accent-yellow); box-shadow: 0 0 10px var(--accent-yellow); }
+
+        main {
+            flex: 1;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto auto;
+            gap: 1rem;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+        }
+
+        .card .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .setup-grid {
+            grid-column: span 3;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            gap: 1rem;
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-group label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        input:read-only {
+            background: #1e293b;
+            color: var(--text-dim);
+        }
+
+        button.small {
+            padding: 0.5rem 1rem;
+            border-radius: 0.4rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .btn-primary { background: var(--accent-blue); color: var(--bg-deep); }
+        .btn-panic { 
+            background: var(--accent-red); 
+            color: white; 
+            font-size: 1.1rem; 
+            font-weight: 900; 
+            padding: 1rem;
+            grid-column: span 3;
+            margin-top: 1rem;
+            border-radius: 0.75rem;
+            border: 4px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-panic:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .controls {
+            grid-column: span 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+        }
+
+        #action-btn {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        #action-btn.start { background: var(--accent-blue); color: var(--bg-deep); }
+        #action-btn.stop { background: var(--accent-red); color: white; }
+        #action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .critical-banner {
+            display: none;
+            background: var(--accent-red);
+            color: white;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .footer {
+            border-top: 1px solid #334155;
+            padding: 0.75rem 2rem;
+            background: rgba(0,0,0,0.2);
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #help-btn {
+            color: var(--accent-blue);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 600px;
+            border: 1px solid var(--accent-blue);
+        }
+
+        .modal-content h2 { color: var(--accent-blue); margin-top: 0; }
+        .modal-content ol { padding-left: 1.2rem; }
+        .modal-content li { margin-bottom: 0.5rem; color: var(--text-main); }
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+    <div id="critical-msg" class="critical-banner"></div>
+    
+    <header>
+        <div>
+            <h1 style="margin:0; font-size: 1.25rem;">ATEM Delayed Streamer</h1>
+            <p style="margin:0; color: var(--text-dim); font-size: 0.75rem;">Machine A (Capture Node)</p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div id="license-badge" class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red);">
+                Trial Mode: <span id="trial-days">--</span> Days Left
+            </div>
+            <div class="status-badge">
+                <div id="hw-dot" class="dot"></div>
+                <span id="hw-text">Searching hardware...</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- LICENSING PANEL -->
+        <div id="licensing-panel" class="setup-grid" style="border-color: var(--accent-red); margin-bottom: 0.5rem; display: none;">
+            <div class="input-group" style="grid-column: span 1;">
+                <label>Your Hardware ID</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="display-hwid" readonly style="font-family: monospace; font-size: 0.8rem;">
+                    <button id="copy-hwid-btn" class="small btn-primary">Copy</button>
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-dim); margin: 0.25rem 0;">Email this ID to purchase a lifetime license.</p>
+            </div>
+            <div class="input-group" style="grid-column: span 2;">
+                <label>Enter License Key</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="license-input" placeholder="ATEM-XXXX-XXXX-XXXX" style="flex: 1;">
+                    <button id="activate-btn" class="small btn-primary" style="background: var(--accent-green); color: white;">Activate Now</button>
+                </div>
+                <p id="license-msg" style="font-size: 0.7rem; margin: 0.25rem 0;"></p>
+            </div>
+        </div>
+        <!-- OBS SETUP PANEL -->
+        <div class="setup-grid">
+            <div class="input-group">
+                <label>Buffer Delay (Seconds)</label>
+                <input type="number" id="buffer-delay" value="600" min="10">
+            </div>
+            <div class="input-group">
+                <label>OBS Machine B (IP : PORT)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="obs-ip" placeholder="127.0.0.1" style="flex: 2;">
+                    <input type="number" id="obs-port" value="4455" style="flex: 1;">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>OBS Status</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div id="obs-status-dot" class="dot"></div>
+                    <span id="obs-status-text" style="font-size: 0.8rem; font-weight: bold;">OFFLINE</span>
+                </div>
+                <button id="test-obs-btn" class="small btn-primary">Test Connection</button>
+            </div>
+            <div class="input-group" style="grid-column: span 2;">
+                <label>OBS WebSocket Password</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="password" id="obs-password" placeholder="••••••••" style="flex: 1;">
+                    <button id="toggle-password-btn" class="small btn-primary" style="background: #334155; color: white;">Show</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>OBS Auto-Switch</label>
+                <button id="obs-toggle-btn" class="small btn-primary" style="background: var(--accent-green); color: white;">Enabled</button>
+            </div>
+            <div class="input-group" style="grid-column: span 2;">
+                <label>Base Recording Directory (Machine A)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="base-path" placeholder="E:\RECORDINGS" style="flex: 1;">
+                    <button id="select-path-btn" class="small btn-primary" style="background: #334155; color: white;">Select</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Active Session Path</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="current-path" readonly placeholder="Waiting for start..." style="flex: 1; font-size: 0.75rem;">
+                    <button id="copy-path-btn" class="small btn-primary">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELEMETRY CARDS -->
+        <div class="card">
+            <h3>Capture Status</h3>
+            <div id="capture-val" class="value">Idle</div>
+        </div>
+        <div class="card">
+            <h3>Storage (E:)</h3>
+            <div id="disk-val" class="value">-- GB Free</div>
+            <div id="file-size-val" style="font-size: 0.7rem; color: var(--text-dim);">0 MB</div>
+        </div>
+        <div class="card">
+            <h3>Buffer Progress</h3>
+            <div id="buffer-val" class="value">00:00:00</div>
+            <div id="countdown-val" style="font-size: 0.75rem; color: var(--accent-yellow);">Wait for start...</div>
+        </div>
+        
+        <div class="card">
+            <h3>FFmpeg Health</h3>
+            <div id="fps-val" class="value">0 FPS</div>
+            <div id="bitrate-val" style="font-size: 0.7rem; color: var(--text-dim);">0 kbps</div>
+        </div>
+        <div class="card">
+            <h3>Dropped Frames</h3>
+            <div id="drop-val" class="value" style="color: var(--accent-red);">0</div>
+        </div>
+        <div class="card">
+            <h3>Input Source</h3>
+            <div id="source-val" class="value" style="font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">None</div>
+        </div>
+
+        <div class="controls">
+            <button id="action-btn" class="start" disabled>Start Buffering</button>
+            <button id="panic-btn" class="btn-panic" disabled>EMERGENCY PANIC (CUT TO SAFE)</button>
+        </div>
+    </main>
+
+    <div class="footer">
+        <div>Handshake API: <span id="api-status" style="color: var(--accent-green)">ONLINE (8080)</span></div>
+        <div id="help-btn">Setup Instructions (?)</div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-modal">&times;</span>
+            <h2>Machine B Setup Instructions</h2>
+            <ol>
+                <li><strong>Network Setup:</strong> Ensure Machine B can access Machine A's drive.</li>
+                <li><strong>OBS Scenes:</strong> You MUST create two specific scenes in OBS:
+                    <ul>
+                        <li>Create a scene named <code>DELAYED_STREAM</code>. Add your Media Source here, pointing to the shared <code>.ts</code> file. Uncheck "Local File", set Network Buffering to 2MB, and check "Hardware Decoding".</li>
+                        <li>Create a scene named <code>SAFE_SCENE</code>. Add your holding graphic or "Please Wait" screen here.</li>
+                    </ul>
+                </li>
+                <li><strong>OBS WebSocket:</strong> In OBS, go to Tools > WebSocket Server Settings. Enable it, set the port to 4455, and set a password. Put these details into the App's configuration panel.</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
+

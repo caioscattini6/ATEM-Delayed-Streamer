@@ -1,0 +1,24 @@
+I need to implement the transition to macOS for our ATEM Delayed Streamer application.
+
+Crucial Context: The customer is aware this is an unsigned app from a solo developer. We are intentionally skipping Apple Developer registration, Code Signing, and Notarization. The customer will manually bypass Gatekeeper. We must not alter any existing features of the application; we are strictly adapting the underlying engine and packaging for Mac.
+
+Please provide the exact code updates, terminal commands, and configuration blocks to adapt our Windows prototype into a production-ready, unsigned macOS .dmg file based on these 3 steps:
+
+1. Swap the Video Engine (Windows to macOS)
+* Update our hardware detection logic (hw_detect.js).
+* Instead of Windows dshow, you must update the command to use the macOS AVFoundation framework to capture the ATEM Mini.
+* Update the parsing logic to successfully identify "Blackmagic Design" from the Mac terminal output.
+* Update the core recording function: Modify the FFmpeg spawn command so that it uses the -f avfoundation flag instead of -f dshow when initiating the video capture stream.
+* Ensure the framerate and MPEG-TS (.ts) container settings remain intact.
+
+2. Update the Bundled FFmpeg Binary
+* Provide instructions on removing the Windows ffmpeg.exe and replacing it with a static macOS FFmpeg binary (ideally a Universal binary that supports both Intel and Apple Silicon M-Series).
+* Update the package.json extraResources array to point to this new Mac binary (removing the .exe extension).
+* Ensure the Node.js path resolution logic continues to find and execute this bundled binary correctly within the compiled Mac .app structure.
+
+3. Configure Electron Builder for an Unsigned Mac Build
+* Update the package.json build configuration to target macOS (generating a .dmg file).
+* Critical: Provide the exact mac configuration block for electron-builder to explicitly disable code signing and notarization. (e.g., setting identity to null) .
+* Provide the NPM script command to run the Mac build process.
+
+Please output the revised package.json build block, the updated FFmpeg spawn strings, and the new AVFoundation hardware detection parsing logic.

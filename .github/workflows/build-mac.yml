@@ -1,0 +1,32 @@
+name: Build macOS Unsigned DMG
+
+on:
+  workflow_dispatch: # This allows you to trigger the build manually with a button click
+
+jobs:
+  build-mac:
+    runs-on: macos-latest # This provisions the temporary cloud Mac
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # Adjust if you are using a different Node version
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Make FFmpeg Executable
+        run: chmod +x bin/ffmpeg
+
+      - name: Build Unsigned Mac App
+        run: npm run build:mac
+
+      - name: Upload DMG as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ATEM-Delayed-Streamer-Mac
+          path: dist/*.dmg # This grabs the generated DMG from electron-builder
